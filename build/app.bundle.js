@@ -9500,15 +9500,112 @@ module.exports = function (regExp, replace) {
 
 var _http = __webpack_require__(334);
 
+var _ui = __webpack_require__(335);
+
 // Get posts on DOM load
 document.addEventListener('DOMContentLoaded', getPosts);
 
+// Listen for submit post
+document.querySelector('.post-submit').addEventListener('click', submitPost);
+
+// Listen for delete
+document.querySelector('#posts').addEventListener('click', deletePost);
+
+// Listen for edit state
+document.querySelector('#posts').addEventListener('click', enableEdit);
+
+// Listen for cancel
+document.querySelector('.card-form').addEventListener('click', cancelEdit);
+
+// Get posts
 function getPosts() {
   _http.http.get('http://localhost:3000/posts').then(function (data) {
-    return console.log(data);
+    return _ui.ui.showPosts(data);
   }).catch(function (err) {
     return console.log(err);
   });
+}
+
+// Submit post
+function submitPost() {
+  var title = document.querySelector('#title').value;
+  var body = document.querySelector('#body').value;
+  var id = document.querySelector('#id').value;
+
+  var data = {
+    title: title,
+    body: body
+
+    // Validate input
+  };if (title === '' || body === '') {
+    _ui.ui.showAlert('Please fill in all fields', 'alert alert-danger');
+  } else {
+
+    // Check for ID
+    if (id === '') {
+      // Create post
+      _http.http.post('http://localhost:3000/posts', data).then(function (data) {
+        _ui.ui.showAlert('Post added', 'alert alert-success');
+        _ui.ui.clearFields();
+        getPosts();
+      }).catch(function (err) {
+        return console.log(err);
+      });
+    } else {
+      // Update post
+      _http.http.put('http://localhost:3000/posts/' + id, data).then(function (data) {
+        _ui.ui.showAlert('Post updated', 'alert alert-success');
+        _ui.ui.changeFormState('add');
+        getPosts();
+      }).catch(function (err) {
+        return console.log(err);
+      });
+    }
+  }
+}
+
+// Delete post
+function deletePost(e) {
+  e.preventDefault();
+  if (e.target.parentElement.classList.contains('delete')) {
+    var id = e.target.parentElement.dataset.id;
+    if (confirm('Are you sure?')) {
+      _http.http.delete('http://localhost:3000/posts/' + id).then(function (data) {
+        _ui.ui.showAlert('Post Removed', 'alert alert-success');
+        getPosts();
+      }).catch(function (err) {
+        return console.log(err);
+      });
+    }
+  }
+}
+
+// Enable edit state
+function enableEdit(e) {
+  if (e.target.parentElement.classList.contains('edit')) {
+    var id = e.target.parentElement.dataset.id;
+    var title = e.target.parentElement.previousElementSibling.previousElementSibling.textContent;
+    var body = e.target.parentElement.previousElementSibling.textContent;
+
+    var data = {
+      id: id,
+      title: title,
+      body: body
+
+      // Fill form with current post
+    };_ui.ui.fillForm(data);
+  }
+
+  e.preventDefault();
+}
+
+// Cancel edit state
+function cancelEdit(e) {
+  if (e.target.classList.contains('post-cancel')) {
+    _ui.ui.changeFormState('add');
+  }
+
+  e.preventDefault();
 }
 
 /***/ }),
@@ -9717,6 +9814,157 @@ var EasyHTTP = function () {
 }();
 
 var http = exports.http = new EasyHTTP();
+
+/***/ }),
+/* 335 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var UI = function () {
+  function UI() {
+    _classCallCheck(this, UI);
+
+    this.post = document.querySelector('#posts');
+    this.titleInput = document.querySelector('#title');
+    this.bodyInput = document.querySelector('#body');
+    this.idInput = document.querySelector('#id');
+    this.postSubmit = document.querySelector('.post-submit');
+    this.forState = 'add';
+  }
+
+  // Show all posts
+
+
+  _createClass(UI, [{
+    key: 'showPosts',
+    value: function showPosts(posts) {
+      var output = '';
+
+      posts.forEach(function (post) {
+        output += '\n        <div class="card mb-3">\n          <div class="card-body">\n            <h4 class="card-title">' + post.title + '</h4>\n            <p class="card-text">' + post.body + '</p>\n            <a href="#" class="edit card-link" data-id="' + post.id + '">\n              <i class="fa fa-pencil"></i>\n            </a>\n\n            <a href="#" class="delete card-link" data-id="' + post.id + '">\n            <i class="fa fa-remove"></i>\n          </a>\n          </div>\n        </div>\n      ';
+      });
+
+      this.post.innerHTML = output;
+    }
+
+    // Show alert message
+
+  }, {
+    key: 'showAlert',
+    value: function showAlert(message, className) {
+      var _this = this;
+
+      this.clearAlert();
+
+      // Create div
+      var div = document.createElement('div');
+      // Add classes
+      div.className = className;
+      //Add text
+      div.appendChild(document.createTextNode(message));
+      // Get parent 
+      var container = document.querySelector('.postsContainer');
+      // Get posts
+      var posts = document.querySelector('#posts');
+      // Insert alert div
+      container.insertBefore(div, posts);
+
+      // Timeout
+      setTimeout(function () {
+        _this.clearAlert();
+      }, 3000);
+    }
+
+    //Clear alert message
+
+  }, {
+    key: 'clearAlert',
+    value: function clearAlert() {
+      var currentAlert = document.querySelector('.alert');
+
+      if (currentAlert) {
+        currentAlert.remove();
+      }
+    }
+
+    // Clear all fields
+
+  }, {
+    key: 'clearFields',
+    value: function clearFields() {
+      this.titleInput.value = '';
+      this.bodyInput.value = '';
+    }
+
+    // Fill form to edit
+
+  }, {
+    key: 'fillForm',
+    value: function fillForm(data) {
+      this.titleInput.value = data.title;
+      this.bodyInput.value = data.body;
+      this.idInput.value = data.id;
+
+      this.changeFormState('edit');
+    }
+
+    // Clear ID hidden value
+
+  }, {
+    key: 'clearIdInput',
+    value: function clearIdInput() {
+      this.idInput.value = '';
+    }
+
+    // Change the form state
+
+  }, {
+    key: 'changeFormState',
+    value: function changeFormState(type) {
+      if (type === 'edit') {
+        this.postSubmit.textContent = 'Update Post';
+        this.postSubmit.className = 'post-submit btn btn-warning btn-block';
+
+        // Create cancel button
+        var button = document.createElement('button');
+        button.className = 'post-cancel btn btn-light btn-block';
+        button.appendChild(document.createTextNode('Cancel Edit'));
+
+        // Get parent
+        var cardForm = document.querySelector('.card-form');
+        // Get element to insert before
+        var formEnd = document.querySelector('.form-end');
+        // Insert cancel button
+        cardForm.insertBefore(button, formEnd);
+      } else {
+        this.postSubmit.textContent = 'Post It';
+        this.postSubmit.className = 'post-submit btn btn-primary btn-block';
+        // Remove cancel button if it's there
+        if (document.querySelector('.post-cancel')) {
+          document.querySelector('.post-cancel').remove();
+        }
+        // Clear ID from hidden field
+        this.clearIdInput();
+        // Clear text fields
+        this.clearFields();
+      }
+    }
+  }]);
+
+  return UI;
+}();
+
+var ui = exports.ui = new UI();
 
 /***/ })
 /******/ ]);
